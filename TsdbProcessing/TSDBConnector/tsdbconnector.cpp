@@ -40,8 +40,8 @@ bool tsdbconnector::select(const QString &table, const QStringList &fields, int 
         qDebug() << "Unable to execute query. Status: " << (int) PQstatus(conn) << ", message: " << PQerrorMessage(conn);
         return false;
     }
-    auto result = PQexec(conn, QString("SELECT %1 FROM %2 LIMIT %3").arg(
-            fields.join(','), table, QString::number(limit)
+    auto result = PQexec(conn, QString("SELECT %1 FROM %2 %3 LIMIT %4").arg(
+            fields.join(','), table, args, QString::number(limit)
             ).toStdString().c_str());
     if (PQresultStatus(result) != ExecStatusType::PGRES_TUPLES_OK) {
         qDebug() << "Error on select. Status: " << (int)PQresultStatus(result) << ", message : " << PQresultErrorMessage(result);
@@ -75,8 +75,77 @@ bool tsdbconnector::insert(const QString &table, const QStringList &fields, cons
     return true;
 }
 
-void tsdbconnector::setFields(const QStringList &fields) {
-    tsdbconnector::fields = fields.join(',');
-    this->format =
+void tsdbconnector::setFormat(const QString &mFormat) {
+    format.clear();
+    format = mFormat;
 }
+
+void tsdbconnector::setFields(const QStringList &fields) {
+    tsdbconnector::fields = fields.join(',').prepend('(').append(')');
+
+}
+
+void tsdbconnector::setTablename(const QString &tablename) {
+    tsdbconnector::tablename = tablename;
+}
+
+bool tsdbconnector::insert(const QStringList &values) {
+    return false;
+}
+
+bool tsdbconnector::insertPreloaded() {
+    if (Q_UNLIKELY(PQstatus(conn) != ConnStatusType::CONNECTION_OK)) {
+        qDebug() << "Unable to execute query. Status: " << (int) PQstatus(conn) << ", message: " << PQerrorMessage(conn);
+        return false;
+    }
+    auto result = PQexec(conn, QString("INSERT INTO %1 %2 VALUES %3;").arg(
+            tablename, fields, valuesQueue.join(',')).toStdString().c_str());
+    valuesQueue.clear();
+
+    if (Q_UNLIKELY(PQresultStatus(result) != ExecStatusType::PGRES_COMMAND_OK)) {
+        qDebug() << "Error on inserting: " << PQresultErrorMessage(result);
+        return false;
+    }
+    return true;
+}
+
+void tsdbconnector::preloadValues(std::vector<std::string> values) {
+    QStringList qValues{};
+    for (auto& fieldVal : values) {
+        qValues.append(QString::fromStdString(fieldVal));
+    }
+    preloadValues(qValues);
+}
+
+void tsdbconnector::preloadValues(std::vector<std::vector<std::string>> values) {
+    for (auto& val : values) {
+        preloadValues(val);
+    }
+}
+
+void tsdbconnector::preloadValues(QStringList values) {
+    valuesQueue.append(prepareValuesString(values).prepend('(').append(')'));
+}
+
+void tsdbconnector::preloadValues(QList<QStringList> &values) {
+    for (auto& val : values) {
+        preloadValues(val);
+    }
+}
+
+void tsdbconnector::preloadValue(QString value) {
+    if (!value.startsWith('(')) value.prepend('(');
+    if (!value.endsWith(')')) value.append(')');
+    valuesQueue.append(value);
+}
+
+QString tsdbconnector::prepareValuesString(QStringList &valuesList) {
+    QString newVal{format};
+    for (auto& val : valuesList) {
+        newVal = newVal.arg(val);
+    }
+    return newVal;
+}
+
+
 

@@ -8,6 +8,10 @@
 #include <QString>
 #include <QStringList>
 #include <QDebug>
+#include <QList>
+#include <vector>
+#include <string>
+//#include <stdlib.h>
 #include <libpq-fe.h>
 
 class tsdbconnector {
@@ -19,6 +23,19 @@ public:
     void disconnect();
     bool select(const QString& table, const QStringList& fields, int limit, const QString& args = "");
     bool insert(const QString& table, const QStringList& fields, const QStringList& vals);
+    bool insert(const QStringList& values);
+    bool insertPreloaded();
+    void setFields(const QStringList &fields);
+    void setFormat(const QString& mFormat);
+    //! Build and add values string from list of values
+    void preloadValues(QStringList values);
+    void preloadValues(std::vector<std::string> values);
+    //! Build and add multiple values string from list of values list
+    void preloadValues(QList<QStringList> &values);
+    void preloadValues(std::vector<std::vector<std::string> > values);
+    //! Add preformatted values string
+    void preloadValue(QString value);
+
 private:
     PGconn *conn{nullptr};
     QString hostname;
@@ -26,10 +43,16 @@ private:
     QString pass;
     int port;
     QString dbName;
+    QString tablename;
+    QStringList valuesQueue{};
+    QString prepareValuesString(QStringList& valuesList);
+public:
+    void setTablename(const QString &tablename);
+
+private:
     QString format;
     QString fields;
-public:
-    void setFields(const QString &fields);
+
 };
 
 
