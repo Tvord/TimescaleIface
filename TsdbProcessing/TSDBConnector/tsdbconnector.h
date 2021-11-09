@@ -35,6 +35,7 @@ public:
     void preloadValues(std::vector<std::vector<std::string> > values);
     //! Add preformatted values string
     void preloadValue(QString value);
+    inline void preloadValue(const std::string &value) { valuesQueue.append(value); };
 
 private:
     PGconn *conn{nullptr};
@@ -44,7 +45,8 @@ private:
     int port;
     QString dbName;
     QString tablename;
-    QStringList valuesQueue{};
+    //QStringList valuesQueue{};
+    QList<std::string> valuesQueue{};
     QString prepareValuesString(QStringList& valuesList);
 public:
     void setTablename(const QString &tablename);

@@ -17,9 +17,11 @@ int main(int argc, char** argv) {
     conn.setFields(QStringList{"ts", "tag", "textval", "value"});
     conn.setFormat("'%1', '%2', '%3', %4");
 
-    conn.preloadValues(QStringList{"NOW()", "mytag", "description", QString::number(22.12)});
-    conn.preloadValue("NOW(), 'mytag', 'description', 11.11");
+    for (int i = 0; i < 5000; ++i) {
+        conn.preloadValues(QStringList{"NOW()", "mytag", "description", QString::number(22.12)});
+        conn.preloadValue(QString("NOW(), 'mytag', 'description', 11.11"));
+    }
     conn.insertPreloaded();
-    
+
     conn.select("mdata",QStringList{"ts", "tag", "textval", "value"}, 5, " ORDER BY ts DESC " );
 }
